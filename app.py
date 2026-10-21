@@ -10,11 +10,10 @@ st.set_page_config(
 )
 
 st.title("🚢 Sistema de Gestión Inteligente de Importación Marítima Premium")
-st.markdown("Optimización de Costos, Alertas de Carga Pesada y Rentabilidad")
+st.markdown("Optimización de Costos, Alertas de Carga Pesada y Márgenes de Venta")
 
 # Sidebar para parámetros globales
 st.sidebar.header("🎛️ Parámetros de la Importación")
-fob_total_manual = st.sidebar.number_input("Valor FOB Total ($)", value=15000.0, step=500.0)
 flete = st.sidebar.number_input("Costo de Flete ($)", value=2500.0, step=100.0)
 seguro = st.sidebar.number_input("Costo de Seguro ($)", value=300.0, step=50.0)
 aranceles = st.sidebar.number_input("Aranceles / Impuestos ($)", value=1500.0, step=100.0)
@@ -22,7 +21,7 @@ gastos_locales = st.sidebar.number_input("Gastos Operativos Locales ($)", value=
 
 # Carga de archivo CSV o Excel
 st.markdown("---")
-st.subheader("📋 Detalle de Productos y Proyección de Venta")
+st.subheader("📋 Detalle de Productos y Proyección Comercial")
 uploaded_file = st.file_uploader("Cargue su archivo CSV o Excel con el inventario de productos", type=["csv", "xlsx", "xls"])
 
 if uploaded_file is not None:
@@ -37,23 +36,21 @@ if uploaded_file is not None:
 else:
     # Datos de prueba por defecto
     df_productos = pd.DataFrame({
-        "Producto": ["Articulo A", "Articulo B", "Articulo C"],
-        "Cantidad": [500, 300, 200],
-        "Costo Unitario FOB ($)": [10.0, 20.0, 25.0],
-        "Precio Venta Estimado ($)": [18.0, 35.0, 45.0]
+        "Producto": ["Taladro Percutor 1/2\"", "Taladro Inalámbrico 20V", "Juego de Llaves"],
+        "Cantidad": [150, 200, 300],
+        "Costo Unitario FOB ($)": [10.0, 10.0, 10.0],
+        "Precio Venta Estimado ($)": [28.5, 42.0, 12.5]
     })
 
 if df_productos is not None:
     # Normalizar nombres de columnas para flexibilidad total
     cols_lower = {str(c).strip().lower(): c for c in df_productos.columns}
     
-    # Mapear columnas automáticamente
     col_prod = next((cols_lower[c] for c in cols_lower if any(x in c for x in ['prod', 'item', 'desc', 'nombre'])), None)
     col_cant = next((cols_lower[c] for c in cols_lower if any(x in c for x in ['cant', 'unid', 'qty'])), None)
     col_fob = next((cols_lower[c] for c in cols_lower if any(x in c for x in ['fob', 'costo', 'precio_compra', 'costo_u'])), None)
     col_venta = next((cols_lower[c] for c in cols_lower if any(x in c for x in ['venta', 'precio_v', 'pvp', 'precio'])), None)
 
-    # Renombrar columnas encontradas
     rename_dict = {}
     if col_prod: rename_dict[col_prod] = "Producto"
     if col_cant: rename_dict[col_cant] = "Cantidad"
@@ -61,7 +58,6 @@ if df_productos is not None:
     if col_venta: rename_dict[col_venta] = "Precio Venta Estimado ($)"
     df_productos = df_productos.rename(columns=rename_dict)
 
-    # Asegurar columnas mínimas con valores por defecto si faltan
     if "Producto" not in df_productos.columns:
         df_productos["Producto"] = [f"Producto {i+1}" for i in range(len(df_productos))]
     if "Cantidad" not in df_productos.columns:
@@ -71,15 +67,13 @@ if df_productos is not None:
     if "Precio Venta Estimado ($)" not in df_productos.columns:
         df_productos["Precio Venta Estimado ($)"] = df_productos["Costo Unitario FOB ($)"] * 1.5
 
-    # Convertir a tipos numéricos
     df_productos["Cantidad"] = pd.to_numeric(df_productos["Cantidad"], errors='coerce').fillna(1)
     df_productos["Costo Unitario FOB ($)"] = pd.to_numeric(df_productos["Costo Unitario FOB ($)"], errors='coerce').fillna(0.0)
     df_productos["Precio Venta Estimado ($)"] = pd.to_numeric(df_productos["Precio Venta Estimado ($)"], errors='coerce').fillna(0.0)
 
     # Cálculos dinámicos
     df_productos["FOB Parcial"] = df_productos["Cantidad"] * df_productos["Costo Unitario FOB ($)"]
-    fob_calculado = df_productos["FOB Parcial"].sum()
-    fob_total = fob_calculado if fob_calculado > 0 else fob_total_manual
+    fob_total = df_productos["FOB Parcial"].sum()
 
     cif_total = fob_total + flete + seguro
     costo_total_importacion = cif_total + aranceles + gastos_locales
@@ -90,16 +84,22 @@ if df_productos is not None:
     df_productos["Margen Unitario ($)"] = df_productos["Precio Venta Estimado ($)"] - df_productos["Costo Final Unitario ($)"]
     df_productos["Rentabilidad (%)"] = (df_productos["Margen Unitario ($)"] / df_productos["Costo Final Unitario ($)"]) * 100
 
-    # Mostrar tabla ejecutiva
-    st.dataframe(df_productos.style.format({
-        "Costo Unitario FOB ($)": "${:,.2f}",
-        "Precio Venta Estimado ($)": "${:,.2f}",
-        "FOB Parcial": "${:,.2f}",
-        "Costo Final Unitario ($)": "${:,.2f}",
-        "Costo Total Item ($)": "${:,.2f}",
-        "Margen Unitario ($)": "${:,.2f}",
-        "Rentabilidad (%)": "{:.1f}%"
-    }), use_container_width=True)
+    # Mostrar tabla ejecutiva con ancho corregido para productos
+    st.dataframe(
+        df_productos.style.format({
+            "Costo Unitario FOB ($)": "${:,.2f}",
+            "Precio Venta Estimado ($)": "${:,.2f}",
+            "FOB Parcial": "${:,.2f}",
+            "Costo Final Unitario ($)": "${:,.2f}",
+            "Costo Total Item ($)": "${:,.2f}",
+            "Margen Unitario ($)": "${:,.2f}",
+            "Rentabilidad (%)": "{:.1f}%"
+        }),
+        column_config={
+            "Producto": st.column_config.TextColumn("Producto", width="large")
+        },
+        use_container_width=True
+    )
 
     # Indicadores Clave (KPIs)
     st.markdown("---")
@@ -108,23 +108,23 @@ if df_productos is not None:
     col2.metric("Factor Multiplicador", f"{factor_multiplicador:.3f}")
     
     impacto_flete = (flete / fob_total * 100) if fob_total > 0 else 0
-    col3.metric("Impacto Flete / FOB", f"{impacto_flete:.1f}%")
+    col3.metric("Impacto Flete / FOB Global", f"{impacto_flete:.1f}%")
     
-    # Alerta de Carga Pesada
+    # Alerta de Carga Pesada Global
     if impacto_flete > 60:
         estado_carga = "ROJO"
-        color_alerta = "🔴 ALERTA ROJA: Carga muy pesada / flete crítico (>60% del FOB)"
+        color_alerta = "🔴 ALERTA ROJA (Global): Flete crítico (>60% del FOB)"
     elif impacto_flete >= 30:
         estado_carga = "AMARILLO"
-        color_alerta = "🟡 ALERTA AMARILLA: Carga moderadamente pesada (30%-60% del FOB)"
+        color_alerta = "🟡 ALERTA AMARILLA (Global): Flete moderadamente pesado (30%-60% del FOB)"
     else:
         estado_carga = "VERDE"
-        color_alerta = "🟢 VERDE: Carga ligera / óptima (<30% del FOB)"
+        color_alerta = "🟢 VERDE (Global): Flete óptimo (<30% del FOB)"
         
-    col4.metric("Estado de Carga", estado_carga)
+    col4.metric("Estado Carga Global", estado_carga)
 
     st.sidebar.markdown("---")
-    st.sidebar.subheader("🚨 Alerta de Carga Pesada")
+    st.sidebar.subheader("🚨 Alerta Global de Carga")
     if estado_carga == "ROJO":
         st.sidebar.error(color_alerta)
     elif estado_carga == "AMARILLO":
@@ -143,18 +143,18 @@ if df_productos is not None:
         pdf.ln(5)
         
         pdf.set_font('helvetica', 'B', 11)
-        pdf.cell(0, 7, '1. Resumen Financiero y Logístico', 0, 1)
+        pdf.cell(0, 7, '1. Resumen Financiero y Logístico (Global)', 0, 1)
         pdf.set_font('helvetica', '', 10)
         pdf.set_text_color(50, 50, 50)
         
         pdf.cell(0, 6, f'Valor FOB Total: ${fob_total:,.2f}', 0, 1)
         pdf.cell(0, 6, f'Flete: ${flete:,.2f} | Seguro: ${seguro:,.2f}', 0, 1)
-        pdf.cell(0, 6, f'Alerta Carga Pesada: {estado_carga} ({impacto_flete:.1f}% del FOB)', 0, 1)
+        pdf.cell(0, 6, f'Alerta Carga Pesada (Embarque): {estado_carga} ({impacto_flete:.1f}% del FOB)', 0, 1)
         pdf.ln(4)
         
         pdf.set_font('helvetica', 'B', 11)
         pdf.set_text_color(30, 58, 138)
-        pdf.cell(0, 7, '2. Detalle de Productos y Gastos Asignados', 0, 1)
+        pdf.cell(0, 7, '2. Detalle de Productos y Márgenes Comerciales', 0, 1)
         pdf.set_font('helvetica', '', 9)
         pdf.set_text_color(50, 50, 50)
         
@@ -175,7 +175,7 @@ if df_productos is not None:
         pdf.ln(4)
         pdf.set_font('helvetica', 'B', 10)
         pdf.cell(0, 6, f"Costo Total Importación: ${costo_total_importacion:,.2f}", 0, 1)
-        pdf.cell(0, 6, f"Factor Multiplicador: {factor_multiplicador:.3f}", 0, 1)
+        pdf.cell(0, 6, f"Factor Multiplicador Global: {factor_multiplicador:.3f}", 0, 1)
         
         pdf.ln(8)
         pdf.set_font('helvetica', 'B', 10)
@@ -183,8 +183,8 @@ if df_productos is not None:
         pdf.cell(0, 6, 'Aprobado y Validado por:', 0, 1)
         pdf.set_font('helvetica', '', 9)
         pdf.set_text_color(80, 80, 80)
-        pdf.cell(0, 5, 'Profesor Jesús - Especialista en Comercio Internacional', 0, 1)
-        pdf.cell(0, 5, 'Asesoría y Gestión Logística Versión Premium', 0, 1)
+        pdf.cell(0, 5, 'Prof. Jesús Pulido - Asesor Especialista en Comercio Internacional Inteligente', 0, 1)
+        pdf.cell(0, 5, 'Asesoría y Gestión Logística - Versión Premium', 0, 1)
         
         try:
             pdf.image('IMG-20261020-WA0010.jpg', x=160, y=pdf.get_y()-12, w=25)
@@ -202,4 +202,3 @@ if df_productos is not None:
             file_name="Reporte_Importacion_Premium.pdf",
             mime="application/pdf"
         )
-
