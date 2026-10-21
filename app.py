@@ -43,7 +43,6 @@ else:
     })
 
 if df_productos is not None:
-    # Normalizar nombres de columnas para flexibilidad total
     cols_lower = {str(c).strip().lower(): c for c in df_productos.columns}
     
     col_prod = next((cols_lower[c] for c in cols_lower if any(x in c for x in ['prod', 'item', 'desc', 'nombre'])), None)
@@ -71,7 +70,6 @@ if df_productos is not None:
     df_productos["Costo Unitario FOB ($)"] = pd.to_numeric(df_productos["Costo Unitario FOB ($)"], errors='coerce').fillna(0.0)
     df_productos["Precio Venta Estimado ($)"] = pd.to_numeric(df_productos["Precio Venta Estimado ($)"], errors='coerce').fillna(0.0)
 
-    # Cálculos dinámicos
     df_productos["FOB Parcial"] = df_productos["Cantidad"] * df_productos["Costo Unitario FOB ($)"]
     fob_total = df_productos["FOB Parcial"].sum()
 
@@ -84,24 +82,27 @@ if df_productos is not None:
     df_productos["Margen Unitario ($)"] = df_productos["Precio Venta Estimado ($)"] - df_productos["Costo Final Unitario ($)"]
     df_productos["Rentabilidad (%)"] = (df_productos["Margen Unitario ($)"] / df_productos["Costo Final Unitario ($)"]) * 100
 
-    # Mostrar tabla ejecutiva con ancho corregido para productos
+    # REORDENAR COLUMNAS PARA QUE PRODUCTO Y CANTIDAD QUEDEN SIEMPRE PRIMERO
+    columnas_principales = ["Producto", "Cantidad", "Costo Unitario FOB ($)", "Precio Venta Estimado ($)", "Costo Final Unitario ($)", "Costo Total Item ($)", "Margen Unitario ($)", "Rentabilidad (%)"]
+    otras_columnas = [c for c in df_productos.columns if c not in columnas_principales]
+    df_productos = df_productos[columnas_principales + otras_columnas]
+
+    # TABLA NATIVA INTERACTIVA (CON SCROLL FLUIDO Y FORMATO INTEGRADO)
     st.dataframe(
-        df_productos.style.format({
-            "Costo Unitario FOB ($)": "${:,.2f}",
-            "Precio Venta Estimado ($)": "${:,.2f}",
-            "FOB Parcial": "${:,.2f}",
-            "Costo Final Unitario ($)": "${:,.2f}",
-            "Costo Total Item ($)": "${:,.2f}",
-            "Margen Unitario ($)": "${:,.2f}",
-            "Rentabilidad (%)": "{:.1f}%"
-        }),
+        df_productos,
         column_config={
-            "Producto": st.column_config.TextColumn("Producto", width="large")
+            "Producto": st.column_config.TextColumn("Producto", width="large"),
+            "Cantidad": st.column_config.NumberColumn("Cantidad", format="%d"),
+            "Costo Unitario FOB ($)": st.column_config.NumberColumn("Costo Unitario FOB ($)", format="$%.2f"),
+            "Precio Venta Estimado ($)": st.column_config.NumberColumn("Precio Venta Estimado ($)", format="$%.2f"),
+            "Costo Final Unitario ($)": st.column_config.NumberColumn("Costo Final Unitario ($)", format="$%.2f"),
+            "Costo Total Item ($)": st.column_config.NumberColumn("Costo Total Item ($)", format="$%.2f"),
+            "Margen Unitario ($)": st.column_config.NumberColumn("Margen Unitario ($)", format="$%.2f"),
+            "Rentabilidad (%)": st.column_config.NumberColumn("Rentabilidad (%)", format="%.1f%%")
         },
         use_container_width=True
     )
 
-    # Indicadores Clave (KPIs)
     st.markdown("---")
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Costo Total Importación", f"${costo_total_importacion:,.2f}")
@@ -110,7 +111,6 @@ if df_productos is not None:
     impacto_flete = (flete / fob_total * 100) if fob_total > 0 else 0
     col3.metric("Impacto Flete / FOB Global", f"{impacto_flete:.1f}%")
     
-    # Alerta de Carga Pesada Global
     if impacto_flete > 60:
         estado_carga = "ROJO"
         color_alerta = "🔴 ALERTA ROJA (Global): Flete crítico (>60% del FOB)"
@@ -132,30 +132,29 @@ if df_productos is not None:
     else:
         st.sidebar.success(color_alerta)
 
-    # Función para generar el PDF
     def generar_pdf():
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font('helvetica', 'B', 14)
+        
+        pdf.set_font('helvetica', 'B', 16)
         pdf.set_text_color(30, 58, 138)
-        
-        pdf.cell(0, 10, 'SISTEMA INTELIGENTE DE IMPORTACIÓN - REPORTE PREMIUM', 0, 1, 'C')
-        pdf.ln(5)
-        
-        pdf.set_font('helvetica', 'B', 11)
-        pdf.cell(0, 7, '1. Resumen Financiero y Logístico (Global)', 0, 1)
-        pdf.set_font('helvetica', '', 10)
-        pdf.set_text_color(50, 50, 50)
-        
-        pdf.cell(0, 6, f'Valor FOB Total: ${fob_total:,.2f}', 0, 1)
-        pdf.cell(0, 6, f'Flete: ${flete:,.2f} | Seguro: ${seguro:,.2f}', 0, 1)
-        pdf.cell(0, 6, f'Alerta Carga Pesada (Embarque): {estado_carga} ({impacto_flete:.1f}% del FOB)', 0, 1)
+        pdf.cell(0, 12, 'SISTEMA INTELIGENTE DE IMPORTACION - REPORTE PREMIUM', 0, 1, 'C')
         pdf.ln(4)
         
-        pdf.set_font('helvetica', 'B', 11)
+        pdf.set_font('helvetica', 'B', 12)
+        pdf.cell(0, 8, '1. Resumen Financiero y Logistico (Global)', 0, 1)
+        pdf.set_font('helvetica', '', 11)
+        pdf.set_text_color(50, 50, 50)
+        
+        pdf.cell(0, 7, f'Valor FOB Total: ${fob_total:,.2f}', 0, 1)
+        pdf.cell(0, 7, f'Flete: ${flete:,.2f} | Seguro: ${seguro:,.2f}', 0, 1)
+        pdf.cell(0, 7, f'Alerta Carga Pesada (Embarque): {estado_carga} ({impacto_flete:.1f}% del FOB)', 0, 1)
+        pdf.ln(4)
+        
+        pdf.set_font('helvetica', 'B', 12)
         pdf.set_text_color(30, 58, 138)
-        pdf.cell(0, 7, '2. Detalle de Productos y Márgenes Comerciales', 0, 1)
-        pdf.set_font('helvetica', '', 9)
+        pdf.cell(0, 8, '2. Detalle de Productos y Margenes Comerciales', 0, 1)
+        pdf.set_font('helvetica', '', 10)
         pdf.set_text_color(50, 50, 50)
         
         for _, row in df_productos.iterrows():
@@ -167,27 +166,28 @@ if df_productos is not None:
             rent = float(row['Rentabilidad (%)'])
             costo_t = float(row['Costo Total Item ($)'])
             
-            pdf.cell(0, 5, f"Producto: {prod} | Cant: {cant} | FOB U: ${fob_u:,.2f}", 0, 1)
-            pdf.cell(0, 5, f"  -> Costo Final Unitario: ${costo_u:,.2f} | Margen: ${margen_u:,.2f}", 0, 1)
-            pdf.cell(0, 5, f"  -> Rentabilidad: {rent:.1f}% | Costo Total Item: ${costo_t:,.2f}", 0, 1)
-            pdf.ln(2)
+            pdf.cell(0, 6, f"Producto: {prod} | Cant: {cant} | FOB U: ${fob_u:,.2f}", 0, 1)
+            pdf.cell(0, 6, f"  -> Costo Final Unitario: ${costo_u:,.2f} | Margen: ${margen_u:,.2f}", 0, 1)
+            pdf.cell(0, 6, f"  -> Rentabilidad: {rent:.1f}% | Costo Total Item: ${costo_t:,.2f}", 0, 1)
+            pdf.ln(3)
             
         pdf.ln(4)
-        pdf.set_font('helvetica', 'B', 10)
-        pdf.cell(0, 6, f"Costo Total Importación: ${costo_total_importacion:,.2f}", 0, 1)
-        pdf.cell(0, 6, f"Factor Multiplicador Global: {factor_multiplicador:.3f}", 0, 1)
+        pdf.set_font('helvetica', 'B', 11)
+        pdf.cell(0, 7, f"Costo Total Importacion: ${costo_total_importacion:,.2f}", 0, 1)
+        pdf.cell(0, 7, f"Factor Multiplicador Global: {factor_multiplicador:.3f}", 0, 1)
         
         pdf.ln(8)
-        pdf.set_font('helvetica', 'B', 10)
+        pdf.set_font('helvetica', 'B', 11)
         pdf.set_text_color(30, 58, 138)
-        pdf.cell(0, 6, 'Aprobado y Validado por:', 0, 1)
-        pdf.set_font('helvetica', '', 9)
+        pdf.cell(0, 7, 'Aprobado y Validado por:', 0, 1)
+        pdf.set_font('helvetica', '', 10)
         pdf.set_text_color(80, 80, 80)
-        pdf.cell(0, 5, 'Prof. Jesús Pulido - Asesor Especialista en Comercio Internacional Inteligente', 0, 1)
-        pdf.cell(0, 5, 'Asesoría y Gestión Logística - Versión Premium', 0, 1)
+        pdf.cell(0, 6, 'Prof. Jesus Pulido - Asesor Especialista en Comercio Internacional Inteligente', 0, 1)
+        pdf.cell(0, 6, 'Asesoria y Gestion Logistica - Version Premium', 0, 1)
+        pdf.ln(6)
         
         try:
-            pdf.image('IMG-20261020-WA0010.jpg', x=160, y=pdf.get_y()-12, w=25)
+            pdf.image('IMG-20261020-WA0010.jpg', x=20, y=pdf.get_y(), w=40)
         except:
             pass
             
@@ -201,4 +201,5 @@ if df_productos is not None:
             data=pdf_bytes,
             file_name="Reporte_Importacion_Premium.pdf",
             mime="application/pdf"
-        )
+    )
+    
