@@ -168,7 +168,7 @@ def generar_pdf():
     pdf.cell(0, 5, 'Profesor Jesús - Especialista en Comercio Internacional', 0, 1)
     
     try:
-        pdf.image('profesor.jpg', x=160, y=pdf.get_y()-12, w=25)
+        pdf.image('IMG-20261020-WA0010.jpg', x=160, y=pdf.get_y()-12, w=25)
     except:
         pass
         
