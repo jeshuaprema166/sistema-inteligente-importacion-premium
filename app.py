@@ -82,12 +82,13 @@ if df_productos is not None:
     df_productos["Margen Unitario ($)"] = df_productos["Precio Venta Estimado ($)"] - df_productos["Costo Final Unitario ($)"]
     df_productos["Rentabilidad (%)"] = (df_productos["Margen Unitario ($)"] / df_productos["Costo Final Unitario ($)"]) * 100
 
-    # REORDENAR COLUMNAS PARA QUE PRODUCTO Y CANTIDAD QUEDEN SIEMPRE PRIMERO
+    # REORDENAR COLUMNAS
     columnas_principales = ["Producto", "Cantidad", "Costo Unitario FOB ($)", "Precio Venta Estimado ($)", "Costo Final Unitario ($)", "Costo Total Item ($)", "Margen Unitario ($)", "Rentabilidad (%)"]
     otras_columnas = [c for c in df_productos.columns if c not in columnas_principales]
     df_productos = df_productos[columnas_principales + otras_columnas]
 
-    # TABLA NATIVA INTERACTIVA (CON SCROLL FLUIDO Y FORMATO INTEGRADO)
+    st.info("💡 **Guía de Navegación:** La columna **Producto** se mantiene al inicio. Deslice horizontalmente sobre la tabla para explorar todas las métricas financieras.")
+    
     st.dataframe(
         df_productos,
         column_config={
@@ -136,12 +137,14 @@ if df_productos is not None:
         pdf = FPDF()
         pdf.add_page()
         
-        pdf.set_font('helvetica', 'B', 16)
+        # Título principal con fuente grande y legible
+        pdf.set_font('helvetica', 'B', 18)
         pdf.set_text_color(30, 58, 138)
-        pdf.cell(0, 12, 'SISTEMA INTELIGENTE DE IMPORTACION - REPORTE PREMIUM', 0, 1, 'C')
-        pdf.ln(4)
+        pdf.cell(0, 14, 'SISTEMA INTELIGENTE DE IMPORTACION - REPORTE PREMIUM', 0, 1, 'C')
+        pdf.ln(5)
         
-        pdf.set_font('helvetica', 'B', 12)
+        # Sección 1
+        pdf.set_font('helvetica', 'B', 13)
         pdf.cell(0, 8, '1. Resumen Financiero y Logistico (Global)', 0, 1)
         pdf.set_font('helvetica', '', 11)
         pdf.set_text_color(50, 50, 50)
@@ -149,12 +152,13 @@ if df_productos is not None:
         pdf.cell(0, 7, f'Valor FOB Total: ${fob_total:,.2f}', 0, 1)
         pdf.cell(0, 7, f'Flete: ${flete:,.2f} | Seguro: ${seguro:,.2f}', 0, 1)
         pdf.cell(0, 7, f'Alerta Carga Pesada (Embarque): {estado_carga} ({impacto_flete:.1f}% del FOB)', 0, 1)
-        pdf.ln(4)
+        pdf.ln(5)
         
-        pdf.set_font('helvetica', 'B', 12)
+        # Sección 2
+        pdf.set_font('helvetica', 'B', 13)
         pdf.set_text_color(30, 58, 138)
         pdf.cell(0, 8, '2. Detalle de Productos y Margenes Comerciales', 0, 1)
-        pdf.set_font('helvetica', '', 10)
+        pdf.set_font('helvetica', '', 11)
         pdf.set_text_color(50, 50, 50)
         
         for _, row in df_productos.iterrows():
@@ -166,23 +170,42 @@ if df_productos is not None:
             rent = float(row['Rentabilidad (%)'])
             costo_t = float(row['Costo Total Item ($)'])
             
-            pdf.cell(0, 6, f"Producto: {prod} | Cant: {cant} | FOB U: ${fob_u:,.2f}", 0, 1)
-            pdf.cell(0, 6, f"  -> Costo Final Unitario: ${costo_u:,.2f} | Margen: ${margen_u:,.2f}", 0, 1)
-            pdf.cell(0, 6, f"  -> Rentabilidad: {rent:.1f}% | Costo Total Item: ${costo_t:,.2f}", 0, 1)
-            pdf.ln(3)
+            pdf.cell(0, 7, f"Producto: {prod} | Cant: {cant} | FOB U: ${fob_u:,.2f}", 0, 1)
+            pdf.cell(0, 7, f"  -> Costo Final Unitario: ${costo_u:,.2f} | Margen: ${margen_u:,.2f}", 0, 1)
+            pdf.cell(0, 7, f"  -> Rentabilidad: {rent:.1f}% | Costo Total Item: ${costo_t:,.2f}", 0, 1)
+            pdf.ln(4)
             
         pdf.ln(4)
-        pdf.set_font('helvetica', 'B', 11)
-        pdf.cell(0, 7, f"Costo Total Importacion: ${costo_total_importacion:,.2f}", 0, 1)
-        pdf.cell(0, 7, f"Factor Multiplicador Global: {factor_multiplicador:.3f}", 0, 1)
+        pdf.set_font('helvetica', 'B', 12)
+        pdf.cell(0, 8, f"Costo Total Importacion: ${costo_total_importacion:,.2f}", 0, 1)
+        pdf.cell(0, 8, f"Factor Multiplicador Global: {factor_multiplicador:.3f}", 0, 1)
+        pdf.ln(6)
         
+        # 3. APÉNDICE: GLOSARIO TÉCNICO PARA FACILITAR LA LECTURA
+        pdf.set_font('helvetica', 'B', 13)
+        pdf.set_text_color(30, 58, 138)
+        pdf.cell(0, 8, '3. Apendice: Glosario Tecnico de Comercio Internacional', 0, 1)
+        pdf.set_font('helvetica', '', 9.5)
+        pdf.set_text_color(60, 60, 60)
+        
+        glosario_items = [
+            "- Valor FOB: Costo neto de la mercancia en origen (fabrica o puerto de embarque).",
+            "- Factor Multiplicador: Coeficiente global para determinar el costo real puesto en bodega por cada dolar invertido.",
+            "- Impacto Flete/FOB: Relacion porcentual entre el costo del flete y el FOB; mide si la carga es ligera o pesada.",
+            "- Costo Final Unitario: Costo real de cada unidad ya nacionalizada (incluye flete, seguro, aranceles y gastos locales).",
+            "- Rentabilidad: Porcentaje de ganancia neta estimada respecto al costo final unitario del producto."
+        ]
+        for item in glosario_items:
+            pdf.cell(0, 5.5, item, 0, 1)
+        
+        # Bloque de validación institucional y foto centrada abajo
         pdf.ln(8)
         pdf.set_font('helvetica', 'B', 11)
         pdf.set_text_color(30, 58, 138)
         pdf.cell(0, 7, 'Aprobado y Validado por:', 0, 1)
         pdf.set_font('helvetica', '', 10)
         pdf.set_text_color(80, 80, 80)
-        pdf.cell(0, 6, 'Prof. Jesus Pulido - Asesor Especialista en Comercio Internacional Inteligente', 0, 1)
+        pdf.cell(0, 6, 'Prof. Jesus Pulido - Asesor en Comercio Internacional Inteligente', 0, 1)
         pdf.cell(0, 6, 'Asesoria y Gestion Logistica - Version Premium', 0, 1)
         pdf.ln(6)
         
