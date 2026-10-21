@@ -172,11 +172,14 @@ def generar_pdf():
     except:
         pass
         
-    return pdf.output(dest='S').encode('latin1')
+    return bytes(pdf.output())
 
 st.markdown("---")
 if st.button("📥 Generar y Descargar Reporte PDF Premium"):
     pdf_bytes = generar_pdf()
-    b64 = base64.b64encode(pdf_bytes).decode()
-    href = f'<a href="data:application/octet-stream;base64,{b64}" download="Reporte_Importacion_Premium.pdf" style="padding: 10px 20px; background-color: #1E3A8A; color: white; border-radius: 5px; text-decoration: none; font-weight: bold;">📥 Descargar PDF Generado</a>'
-    st.markdown(href, unsafe_allow_html=True)
+    st.download_button(
+        label="📥 Descargar PDF Generado",
+        data=pdf_bytes,
+        file_name="Reporte_Importacion_Premium.pdf",
+        mime="application/pdf"
+    )
