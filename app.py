@@ -9,7 +9,14 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🚢 Sistema de Gestión Inteligente de Importación Marítima Premium")
+# Mostrar Banner Corporativo de Portada
+NOMBRE_IMAGEN_PORTADA = "1792639987089.jpg"
+
+try:
+    st.image(NOMBRE_IMAGEN_PORTADA, use_container_width=True)
+except Exception:
+    st.title("🚢 Sistema de Gestión Inteligente de Importación Marítima Premium")
+
 st.markdown("Optimización de Costos, Alertas de Carga Pesada y Márgenes de Venta")
 
 # Sidebar para parámetros globales con guía explicativa de procedencia
@@ -261,5 +268,5 @@ if df_productos is not None:
             data=pdf_bytes,
             file_name="Reporte_Importacion_Premium.pdf",
             mime="application/pdf"
-    )
-        
+        )
+
